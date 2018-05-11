@@ -50,7 +50,7 @@ describe('Noteful API - Folders', function () {
     return mongoose.disconnect();
   });
 
-  describe.only('GET /api/folders', function () {
+  describe('GET /api/folders', function () {
 
     it('should return the correct number of folders', function () {
       const dbPromise = Folder.find({ userId: user.id });
@@ -87,7 +87,7 @@ describe('Noteful API - Folders', function () {
 
   });
 
-  describe.only('GET /api/folders/:id', function () {
+  describe('GET /api/folders/:id', function () {
     
 
     it('should return correct folder', function () {

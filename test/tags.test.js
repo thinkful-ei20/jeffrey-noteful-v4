@@ -3,25 +3,43 @@ const app = require('../server');
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
 
-const { TEST_MONGODB_URI } = require('../config');
+const { TEST_MONGODB_URI, JWT_SECRET } = require('../config');
 
+const User = require('../models/user');
 const Tag = require('../models/tag');
 const seedTags = require('../db/seed/tags');
+const seedUsers = require('../db/seed/users');
 
 const expect = chai.expect;
 
 chai.use(chaiHttp);
 
-describe('Noteful API - Tags', function () {
+describe.only('Noteful API - Tags', function () {
+  // Define a token and user so it is accessible in the tests
+  let token; 
+  let user;
+
   before(function () {
     return mongoose.connect(TEST_MONGODB_URI)
       .then(() => mongoose.connection.db.dropDatabase());
   });
 
   beforeEach(function () {
-    return Tag.insertMany(seedTags)
-      .then(() => Tag.createIndexes());
+    return Promise.all(seedUsers.map(user => User.hashPassword(user.password)))
+      .then(digests => {
+        seedUsers.forEach((user, i) => user.password = digests[i]);
+        return Promise.all([
+          User.insertMany(seedUsers),
+          Tag.insertMany(seedTags),
+          Tag.createIndexes()
+        ]);
+      })
+      .then(([users]) => {
+        user = users[0];
+        token = jwt.sign({ user }, JWT_SECRET, { subject: user.username });
+      });
   });
 
   afterEach(function () {
@@ -32,13 +50,15 @@ describe('Noteful API - Tags', function () {
     return mongoose.disconnect();
   });
 
-  describe('GET /api/tags', function () {
+  describe.only('GET /api/tags', function () {
 
     it('should return the correct number of tags', function () {
-      return Promise.all([
-        Tag.find(),
-        chai.request(app).get('/api/tags')
-      ])
+      const dbPromise = Tag.find({ userId: user.id });
+      const apiPromise = chai.request(app)
+        .get('/api/tags')
+        .set('Authorization', `Bearer ${token}`); // <<== Add this
+
+      return Promise.all([dbPromise, apiPromise])
         .then(([data, res]) => {
           expect(res).to.have.status(200);
           expect(res).to.be.json;
@@ -47,23 +67,24 @@ describe('Noteful API - Tags', function () {
         });
     });
 
+
     it('should return a list with the correct right fields', function () {
-      return Promise.all([
-        Tag.find(),
-        chai.request(app).get('/api/tags')
-      ])
+      const dbPromise = Tag.find({ userId: user.id }); // <<== Add filter on User Id
+      const apiPromise = chai.request(app)
+        .get('/api/tags')
+        .set('Authorization', `Bearer ${token}`); // <<== Add Authorization header
+
+      return Promise.all([dbPromise, apiPromise])
         .then(([data, res]) => {
           expect(res).to.have.status(200);
           expect(res).to.be.json;
           expect(res.body).to.be.a('array');
-          expect(res.body).to.have.length(data.length);
           res.body.forEach(function (item) {
             expect(item).to.be.a('object');
-            expect(item).to.have.keys('id', 'name', 'createdAt', 'updatedAt');
+            expect(item).to.have.keys('id', 'name', 'userId');  // <<== Update assertion
           });
         });
     });
-
   });
 
   describe('GET /api/tags/:id', function () {
