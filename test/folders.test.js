@@ -50,7 +50,7 @@ describe('Noteful API - Folders', function () {
     return mongoose.disconnect();
   });
 
-  describe('GET /api/folders', function () {
+  describe.only('GET /api/folders', function () {
 
     it('should return the correct number of folders', function () {
       const dbPromise = Folder.find({ userId: user.id });
@@ -88,10 +88,10 @@ describe('Noteful API - Folders', function () {
   });
 
   describe.only('GET /api/folders/:id', function () {
-    let folderId = '111111111111111111111100';
+    
 
-    it.only('should return correct folder', function () {
-
+    it('should return correct folder', function () {
+      const folderId = '111111111111111111111100';
       const dbPromise = Folder.findOne({ userId: user.id });
       const apiPromise = chai.request(app)
         .get('/api/folders/' + folderId)
@@ -112,11 +112,13 @@ describe('Noteful API - Folders', function () {
 
     it('should respond with a 400 for an invalid ID', function () {
       const badId = '99-99-99';
+      const dbPromise = Folder.findOne({ userId: user.id });
+      const apiPromise = chai.request(app)
+        .get('/api/folders/' + badId)
+        .set('Authorization', `Bearer ${token}`); // <<== Add this
 
-      return chai.request(app)
-        .get(`/api/folders/${badId}`)
-        .catch(err => err.response)
-        .then(res => {
+      return Promise.all([dbPromise, apiPromise])
+        .then(([data, res]) => {
           expect(res).to.have.status(400);
           expect(res.body.message).to.eq('The `id` is not valid');
         });
@@ -124,14 +126,16 @@ describe('Noteful API - Folders', function () {
 
     it('should respond with a 404 for non-existant id', function () {
 
-      return chai.request(app)
+      const dbPromise = Folder.findOne({ userId: user.id });
+      const apiPromise = chai.request(app)
         .get('/api/folders/AAAAAAAAAAAAAAAAAAAAAAAA')
-        .catch(err => err.response)
-        .then(res => {
+        .set('Authorization', `Bearer ${token}`); // <<== Add this
+
+      return Promise.all([dbPromise, apiPromise])
+        .then(([data, res]) => {
           expect(res).to.have.status(404);
         });
     });
-
   });
 
   describe('POST /api/folders', function () {
