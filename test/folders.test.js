@@ -3,26 +3,43 @@ const app = require('../server');
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
 
-const { TEST_MONGODB_URI } = require('../config');
+const { TEST_MONGODB_URI, JWT_SECRET } = require('../config');
 
 const Folder = require('../models/folder');
+const User = require('../models/user');
 const seedFolders = require('../db/seed/folders');
-
+const seedUsers = require('../db/seed/users');
 
 const expect = chai.expect;
 
 chai.use(chaiHttp);
 
 describe('Noteful API - Folders', function () {
+  // Define a token and user so it is accessible in the tests
+  let token;
+  let user;
+
   before(function () {
     return mongoose.connect(TEST_MONGODB_URI)
       .then(() => mongoose.connection.db.dropDatabase());
   });
 
   beforeEach(function () {
-    return Folder.insertMany(seedFolders)
-      .then(() => Folder.createIndexes());
+    return Promise.all(seedUsers.map(user => User.hashPassword(user.password)))
+      .then(digests => {
+        seedUsers.forEach((user, i) => user.password = digests[i]);
+        return Promise.all([
+          User.insertMany(seedUsers),
+          Folder.insertMany(seedFolders),
+          Folder.createIndexes()
+        ]);
+      })
+      .then(([users]) => {
+        user = users[0];
+        token = jwt.sign({ user }, JWT_SECRET, { subject: user.username });
+      });
   });
 
   afterEach(function () {
@@ -33,13 +50,15 @@ describe('Noteful API - Folders', function () {
     return mongoose.disconnect();
   });
 
-  describe('GET /api/folders', function () {
+  describe.only('GET /api/folders', function () {
 
     it('should return the correct number of folders', function () {
-      return Promise.all([
-        Folder.find(),
-        chai.request(app).get('/api/folders')
-      ])
+      const dbPromise = Folder.find({ userId: user.id });
+      const apiPromise = chai.request(app)
+        .get('/api/folders')
+        .set('Authorization', `Bearer ${token}`); // <<== Add this
+
+      return Promise.all([dbPromise, apiPromise])
         .then(([data, res]) => {
           expect(res).to.have.status(200);
           expect(res).to.be.json;
@@ -49,18 +68,19 @@ describe('Noteful API - Folders', function () {
     });
 
     it('should return a list with the correct right fields', function () {
-      return Promise.all([
-        Folder.find(),
-        chai.request(app).get('/api/folders')
-      ])
+      const dbPromise = Folder.find({ userId: user.id }); // <<== Add filter on User Id
+      const apiPromise = chai.request(app)
+        .get('/api/folders')
+        .set('Authorization', `Bearer ${token}`); // <<== Add Authorization header
+
+      return Promise.all([dbPromise, apiPromise])
         .then(([data, res]) => {
           expect(res).to.have.status(200);
           expect(res).to.be.json;
           expect(res.body).to.be.a('array');
-          expect(res.body).to.have.length(data.length);
           res.body.forEach(function (item) {
             expect(item).to.be.a('object');
-            expect(item).to.have.keys('id', 'name', 'createdAt', 'updatedAt');
+            expect(item).to.have.keys('id', 'name', 'userId', 'createdAt', 'updatedAt');  // <<== Update assertion
           });
         });
     });
@@ -269,15 +289,15 @@ describe('Noteful API - Folders', function () {
     it('should delete an existing document and respond with 204', function () {
       let data;
       return Folder.findOne()
-        .then( _data => {
+        .then(_data => {
           data = _data;
           return chai.request(app).delete(`/api/folders/${data.id}`);
         })
         .then(function (res) {
           expect(res).to.have.status(204);
-          return Folder.count({_id : data.id});
+          return Folder.count({ _id: data.id });
         })
-        .then( count => {
+        .then(count => {
           expect(count).to.equal(0);
         });
     });
