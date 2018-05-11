@@ -50,7 +50,7 @@ describe('Noteful API - Folders', function () {
     return mongoose.disconnect();
   });
 
-  describe.only('GET /api/folders', function () {
+  describe('GET /api/folders', function () {
 
     it('should return the correct number of folders', function () {
       const dbPromise = Folder.find({ userId: user.id });
@@ -87,21 +87,23 @@ describe('Noteful API - Folders', function () {
 
   });
 
-  describe('GET /api/folders/:id', function () {
+  describe.only('GET /api/folders/:id', function () {
+    let folderId = '111111111111111111111100';
 
-    it('should return correct folder', function () {
-      let data;
-      return Folder.findOne().select('id name')
-        .then(_data => {
-          data = _data;
-          return chai.request(app).get(`/api/folders/${data.id}`);
-        })
-        .then((res) => {
+    it.only('should return correct folder', function () {
+
+      const dbPromise = Folder.findOne({ userId: user.id });
+      const apiPromise = chai.request(app)
+        .get('/api/folders/' + folderId)
+        .set('Authorization', `Bearer ${token}`); // <<== Add this
+
+      return Promise.all([dbPromise, apiPromise])
+        .then(([data, res]) => {
           expect(res).to.have.status(200);
           expect(res).to.be.json;
 
           expect(res.body).to.be.an('object');
-          expect(res.body).to.have.keys('id', 'name', 'createdAt', 'updatedAt');
+          expect(res.body).to.have.keys('id', 'name', 'userId', 'createdAt', 'updatedAt');
 
           expect(res.body.id).to.equal(data.id);
           expect(res.body.name).to.equal(data.name);
