@@ -1,3 +1,9 @@
 language: node_js
 node_js: node
 services: mongodb
+deploy:
+  provider: heroku
+  api_key: 9f0a6ff7-81e9-4318-add2-c0491dd298dc
+  app: jeffrey-noteful-v4
+  on:
+    repo: thinkful-ei20/jeffrey-noteful-v4
