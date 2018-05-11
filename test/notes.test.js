@@ -58,7 +58,7 @@ describe.only('Noteful API - Notes', function () {
     return mongoose.disconnect();
   });
 
-  describe('GET /api/notes', function () {
+  describe.only('GET /api/notes', function () {
 
     it.only('should return the correct number of Notes', function () {
       const dbPromise = Note.find({ userId: user.id });
@@ -75,11 +75,13 @@ describe.only('Noteful API - Notes', function () {
         });
     });
 
-    it('should return a list with the correct right fields', function () {
-      return Promise.all([
-        Note.find(),
-        chai.request(app).get('/api/notes')
-      ])
+    it.only('should return a list with the correct right fields', function () {
+      const dbPromise = Note.find({ userId: user.id }); // <<== Add filter on User Id
+      const apiPromise = chai.request(app)
+        .get('/api/notes')
+        .set('Authorization', `Bearer ${token}`); // <<== Add Authorization header
+
+      return Promise.all([dbPromise, apiPromise])
         .then(([data, res]) => {
           expect(res).to.have.status(200);
           expect(res).to.be.json;
@@ -87,25 +89,32 @@ describe.only('Noteful API - Notes', function () {
           expect(res.body).to.have.length(data.length);
           res.body.forEach(function (item) {
             expect(item).to.be.a('object');
-            expect(item).to.have.keys('id', 'title', 'content', 'createdAt', 'updatedAt', 'folderId', 'tags');
+            expect(item).to.have.keys('id', 'title', 'content', 'createdAt', 'updatedAt', 'folderId', 'tags', 'userId');
           });
         });
     });
 
-    it('should return correct search results for a searchTerm query', function () {
+    it.only('should return correct search results for a searchTerm query', function () {
       const searchTerm = 'gaga';
+      const dbPromise = Note.find({ userId: user.id, title: { $regex: searchTerm } }); // <<== Add filter on User Id
+      const apiPromise = chai.request(app)
+        .get(`/api/notes?searchTerm=${searchTerm}`)
+        .set('Authorization', `Bearer ${token}`); // <<== Add Authorization header
 
-      return Promise.all([
-        Note.find({ title: { $regex: searchTerm } }),
-        chai.request(app).get(`/api/notes?searchTerm=${searchTerm}`)
-      ])
+      return Promise.all([dbPromise, apiPromise])
         .then(([data, res]) => {
           expect(res).to.have.status(200);
           expect(res).to.be.json;
           expect(res.body).to.be.a('array');
-          expect(res.body).to.have.length(1);
-          expect(res.body[0]).to.be.an('object');
-          expect(res.body[0].id).to.equal(data[0].id);
+          expect(res.body).to.have.length(data.length);
+          res.body.forEach(function (item) {
+            expect(res).to.have.status(200);
+            expect(res).to.be.json;
+            expect(res.body).to.be.a('array');
+            expect(res.body).to.have.length(1);
+            expect(res.body[0]).to.be.an('object');
+            expect(res.body[0].id).to.equal(data[0].id);
+          });
         });
     });
 

@@ -16,7 +16,7 @@ const expect = chai.expect;
 
 chai.use(chaiHttp);
 
-describe('Noteful API - Folders', function () {
+describe.only('Noteful API - Folders', function () {
   // Define a token and user so it is accessible in the tests
   let token;
   let user;
@@ -50,7 +50,7 @@ describe('Noteful API - Folders', function () {
     return mongoose.disconnect();
   });
 
-  describe('GET /api/folders', function () {
+  describe.only('GET /api/folders', function () {
 
     it('should return the correct number of folders', function () {
       const dbPromise = Folder.find({ userId: user.id });
@@ -87,7 +87,7 @@ describe('Noteful API - Folders', function () {
 
   });
 
-  describe('GET /api/folders/:id', function () {
+  describe.only('GET /api/folders/:id', function () {
     
 
     it('should return correct folder', function () {

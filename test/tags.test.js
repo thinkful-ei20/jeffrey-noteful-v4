@@ -16,7 +16,7 @@ const expect = chai.expect;
 
 chai.use(chaiHttp);
 
-describe('Noteful API - Tags', function () {
+describe.only('Noteful API - Tags', function () {
   // Define a token and user so it is accessible in the tests
   let token;
   let user;
@@ -50,9 +50,9 @@ describe('Noteful API - Tags', function () {
     return mongoose.disconnect();
   });
 
-  describe('GET /api/tags', function () {
+  describe.only('GET /api/tags', function () {
 
-    it('should return the correct number of tags', function () {
+    it.only('should return the correct number of tags', function () {
       const dbPromise = Tag.find({ userId: user.id });
       const apiPromise = chai.request(app)
         .get('/api/tags')
@@ -68,7 +68,7 @@ describe('Noteful API - Tags', function () {
     });
 
 
-    it('should return a list with the correct right fields', function () {
+    it.only('should return a list with the correct right fields', function () {
       const dbPromise = Tag.find({ userId: user.id }); // <<== Add filter on User Id
       const apiPromise = chai.request(app)
         .get('/api/tags')
@@ -87,9 +87,9 @@ describe('Noteful API - Tags', function () {
     });
   });
 
-  describe('GET /api/tags/:id', function () {
+  describe.only('GET /api/tags/:id', function () {
 
-    it('should return correct tag', function () {
+    it.only('should return correct tag', function () {
       const tagId = '222222222222222222222200';
       const dbPromise = Tag.findOne({ userId: user.id });
       const apiPromise = chai.request(app)
@@ -109,7 +109,7 @@ describe('Noteful API - Tags', function () {
         });
     });
    
-    it('should respond with a 400 for an invalid ID', function () {
+    it.only('should respond with a 400 for an invalid ID', function () {
       const badId = '99-99-99';
       const dbPromise = Tag.findOne({ userId: user.id });
       const apiPromise = chai.request(app)
@@ -123,7 +123,7 @@ describe('Noteful API - Tags', function () {
         });
     });
 
-    it('should respond with a 404 for an ID that does not exist', function () {
+    it.only('should respond with a 404 for an ID that does not exist', function () {
       const dbPromise = Tag.findOne({ userId: user.id });
       const apiPromise = chai.request(app)
         .get('/api/tags/AAAAAAAAAAAAAAAAAAAAAAAA')
